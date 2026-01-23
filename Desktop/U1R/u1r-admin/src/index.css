@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body {
+  font-family: 'Inder', sans-serif;
+}
+
+.heading-font {
+  font-family: 'Tilt Warp', sans-serif;
+}
