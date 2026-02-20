@@ -4,25 +4,31 @@ import { Trash2, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE, withBase } from "../config/api";
 
-export default function Subcategories() {
+export default function Subcategories({ mode }) {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [image, setImage] = useState(null);
+  const initialMode = mode || "wholesale";
+  const [isRetail, setIsRetail] = useState(initialMode === "retail");
+  const [isWholesale, setIsWholesale] = useState(initialMode === "wholesale");
 
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const resolvedMode = isRetail ? "retail" : isWholesale ? "wholesale" : initialMode;
+  const modeQuery = resolvedMode ? `?mode=${resolvedMode}` : "";
+  const isModeLocked = Boolean(mode);
 
   // Fetch categories & subcategories
   const fetchData = async () => {
     const token = localStorage.getItem("adminToken");
 
-    const cat = await axios.get(`${API_BASE}/api/admin/category`, {
+    const cat = await axios.get(`${API_BASE}/api/admin/category${modeQuery}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    const sub = await axios.get(`${API_BASE}/api/admin/subcategory`, {
+    const sub = await axios.get(`${API_BASE}/api/admin/subcategory${modeQuery}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -32,11 +38,21 @@ export default function Subcategories() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [modeQuery]);
+
+  useEffect(() => {
+    if (!mode) return;
+    setIsRetail(mode === "retail");
+    setIsWholesale(mode === "wholesale");
+  }, [mode]);
 
   const handleAdd = async () => {
     if (!name || !categoryId) {
       alert("All fields required");
+      return;
+    }
+    if (isRetail === isWholesale) {
+      alert("Select exactly one mode (Retail or Wholesale).");
       return;
     }
 
@@ -45,6 +61,8 @@ export default function Subcategories() {
 
     formData.append("name", name);
     formData.append("categoryId", categoryId);
+    formData.append("isRetail", isRetail ? "1" : "0");
+    formData.append("isWholesale", isWholesale ? "1" : "0");
     if (image) formData.append("image", image);
 
     await axios.post(`${API_BASE}/api/admin/subcategory`, formData, {
@@ -57,6 +75,8 @@ export default function Subcategories() {
     setName("");
     setCategoryId("");
     setImage(null);
+    setIsRetail(resolvedMode === "retail");
+    setIsWholesale(resolvedMode === "wholesale");
     fetchData();
   };
 
@@ -122,6 +142,38 @@ export default function Subcategories() {
             />
           </div>
 
+        </div>
+
+        <div className="mt-4">
+          <label className="font-semibold block mb-2">Visibility</label>
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="subcategoryMode"
+                checked={isRetail}
+                onChange={() => {
+                  setIsRetail(true);
+                  setIsWholesale(false);
+                }}
+                disabled={isModeLocked}
+              />
+              Retail
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="subcategoryMode"
+                checked={isWholesale}
+                onChange={() => {
+                  setIsRetail(false);
+                  setIsWholesale(true);
+                }}
+                disabled={isModeLocked}
+              />
+              Wholesale
+            </label>
+          </div>
         </div>
 
         <button

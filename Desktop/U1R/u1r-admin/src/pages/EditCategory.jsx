@@ -11,22 +11,33 @@ export default function EditCategory() {
   const [hasSubcategory, setHasSubcategory] = useState("false");
   const [currentImage, setCurrentImage] = useState("");
   const [image, setImage] = useState(null);
+  const [isRetail, setIsRetail] = useState(false);
+  const [isWholesale, setIsWholesale] = useState(false);
 
   // Fetch Category Details
   const fetchCategory = async () => {
     try {
       const token = localStorage.getItem("adminToken");
+      const modes = ["retail", "wholesale"];
+      let category = null;
 
-      const res = await axios.get(`${API_BASE}/api/admin/category`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      const category = res.data.find((c) => c._id === id);
+      for (const m of modes) {
+        const res = await axios.get(`${API_BASE}/api/admin/category?mode=${m}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const match = res.data.find((c) => c._id === id);
+        if (match) {
+          category = match;
+          break;
+        }
+      }
 
       if (category) {
         setName(category.name || "");
         setHasSubcategory(category.hasSubcategory ? "true" : "false");
         setCurrentImage(category.image || "");
+        setIsRetail(category.isRetail ?? true);
+        setIsWholesale(category.isWholesale ?? true);
       }
 
     } catch (error) {
@@ -44,13 +55,19 @@ export default function EditCategory() {
       alert("Category name is required");
       return;
     }
+    if (isRetail === isWholesale) {
+      alert("Select exactly one mode (Retail or Wholesale).");
+      return;
+    }
 
     try {
       const token = localStorage.getItem("adminToken");
       const formData = new FormData();
 
       formData.append("name", name.trim());
-      formData.append("hasSubcategory", hasSubcategory === "true");
+      formData.append("hasSubcategory", hasSubcategory === "true" ? "1" : "0");
+      formData.append("isRetail", isRetail ? "1" : "0");
+      formData.append("isWholesale", isWholesale ? "1" : "0");
 
       if (image) {
         formData.append("image", image);
@@ -101,6 +118,36 @@ export default function EditCategory() {
             <option value="false">No</option>
             <option value="true">Yes</option>
           </select>
+        </div>
+
+        <div className="mt-4">
+          <label className="font-semibold block mb-2">Visibility</label>
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="categoryMode"
+                checked={isRetail}
+                onChange={() => {
+                  setIsRetail(true);
+                  setIsWholesale(false);
+                }}
+              />
+              Retail
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="categoryMode"
+                checked={isWholesale}
+                onChange={() => {
+                  setIsRetail(false);
+                  setIsWholesale(true);
+                }}
+              />
+              Wholesale
+            </label>
+          </div>
         </div>
 
         {/* SHOW OLD IMAGE */}

@@ -9,6 +9,19 @@ export const API_BASE = envBase || "https://api.u1rfoods.com";
 // Helper to prepend API base to relative paths
 export const withBase = (path) => {
   if (!path) return "";
-  if (path.startsWith("http")) return path;
-  return `${API_BASE}${path}`;
+  const cleaned = String(path).trim().replace(/\\/g, "/");
+  if (!cleaned) return "";
+  if (/^https?:\/\//i.test(cleaned)) {
+    try {
+      const parsed = new URL(cleaned);
+      if (parsed.pathname?.startsWith("/uploads/")) {
+        return `${API_BASE}${parsed.pathname}${parsed.search || ""}`;
+      }
+      return cleaned;
+    } catch {
+      return cleaned;
+    }
+  }
+  const normalized = cleaned.startsWith("/") ? cleaned : `/${cleaned}`;
+  return `${API_BASE}${normalized}`;
 };

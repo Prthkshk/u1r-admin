@@ -10,7 +10,9 @@ export default function EditSubcategory() {
   const [data, setData] = useState({
     name: "",
     categoryId: "",
-    image: ""
+    image: "",
+    isRetail: false,
+    isWholesale: false,
   });
 
   const [newImage, setNewImage] = useState(null);
@@ -19,26 +21,36 @@ export default function EditSubcategory() {
 
   const fetchData = async () => {
     const token = localStorage.getItem("adminToken");
+    const modes = ["retail", "wholesale"];
+    let selected = null;
+    let selectedMode = null;
 
-    // Fetch all categories
-    const cat = await axios.get(`${API_BASE}/api/admin/category`, {
+    for (const m of modes) {
+      const sub = await axios.get(`${API_BASE}/api/admin/subcategory?mode=${m}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const match = sub.data.find((s) => s._id === id);
+      if (match) {
+        selected = match;
+        selectedMode = m;
+        break;
+      }
+    }
+
+    if (!selected) return;
+
+    const cat = await axios.get(`${API_BASE}/api/admin/category?mode=${selectedMode}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     setCategories(cat.data);
 
-    // Fetch this subcategory
-    const sub = await axios.get(`${API_BASE}/api/admin/subcategory`, {
-      headers: { Authorization: `Bearer ${token}` },
+    setData({
+      name: selected.name,
+      categoryId: selected.categoryId?._id,
+      image: selected.image,
+      isRetail: selected.isRetail ?? false,
+      isWholesale: selected.isWholesale ?? false,
     });
-
-    const selected = sub.data.find((s) => s._id === id);
-    if (selected) {
-      setData({
-        name: selected.name,
-        categoryId: selected.categoryId?._id,
-        image: selected.image,
-      });
-    }
   };
 
   useEffect(() => {
@@ -47,11 +59,18 @@ export default function EditSubcategory() {
 
   const handleUpdate = async () => {
     try {
+      if (data.isRetail === data.isWholesale) {
+        alert("Select exactly one mode (Retail or Wholesale).");
+        return;
+      }
+
       const token = localStorage.getItem("adminToken");
       const formData = new FormData();
 
       formData.append("name", data.name);
       formData.append("categoryId", data.categoryId);
+      formData.append("isRetail", data.isRetail ? "1" : "0");
+      formData.append("isWholesale", data.isWholesale ? "1" : "0");
 
       if (newImage) formData.append("image", newImage);
 
@@ -101,6 +120,34 @@ export default function EditSubcategory() {
             </option>
           ))}
         </select>
+
+        <div className="mb-4">
+          <label className="font-semibold block mb-2">Visibility</label>
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="subcategoryMode"
+                checked={Boolean(data.isRetail)}
+                onChange={() =>
+                  setData({ ...data, isRetail: true, isWholesale: false })
+                }
+              />
+              Retail
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="subcategoryMode"
+                checked={Boolean(data.isWholesale)}
+                onChange={() =>
+                  setData({ ...data, isRetail: false, isWholesale: true })
+                }
+              />
+              Wholesale
+            </label>
+          </div>
+        </div>
 
         {data.image && (
           <div className="mb-4">

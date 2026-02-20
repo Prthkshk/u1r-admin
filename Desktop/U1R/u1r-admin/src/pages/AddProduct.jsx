@@ -3,20 +3,26 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "../config/api";
 
-export default function AddProduct() {
+export default function AddProduct({ mode }) {
   const navigate = useNavigate();
+  const initialMode = mode || "wholesale";
 
   const [data, setData] = useState({
     name: "",
     price: "",
+    mrp: "",
     position: "",
     weight: "",
     moq: "",
     stock: "",
     description: "",
     categoryId: "",
+    categoryIds: [],
     subcategoryId: "",
-    subcategoryIds: []
+    subcategoryIds: [],
+    isRetail: initialMode === "retail",
+    isWholesale: initialMode === "wholesale",
+    isBestSeller: false
   });
 
   const [image, setImage] = useState(null);
@@ -24,40 +30,86 @@ export default function AddProduct() {
 
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [filteredSubcategories, setFilteredSubcategories] = useState([]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (modeValue) => {
     const token = localStorage.getItem("adminToken");
-    const res = await axios.get(`${API_BASE}/api/admin/category`, {
+    const res = await axios.get(`${API_BASE}/api/admin/category?mode=${modeValue}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     setCategories(res.data);
   };
 
-  const fetchSubcategories = async () => {
+  const fetchSubcategories = async (modeValue, categoryId) => {
     const token = localStorage.getItem("adminToken");
-    const res = await axios.get(`${API_BASE}/api/admin/subcategory`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const categoryQuery = categoryId ? `&categoryId=${categoryId}` : "";
+    const res = await axios.get(
+      `${API_BASE}/api/admin/subcategory?mode=${modeValue}${categoryQuery}`,
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
     setSubcategories(res.data);
   };
 
   useEffect(() => {
-    fetchCategories();
-    fetchSubcategories();
-  }, []);
+    if (mode) {
+      setData((prev) => ({
+        ...prev,
+        isRetail: mode === "retail",
+        isWholesale: mode === "wholesale",
+        isBestSeller: mode === "retail" ? prev.isBestSeller : false,
+      }));
+    }
+  }, [mode]);
+
+  const resolvedMode =
+    data.isRetail ? "retail" : data.isWholesale ? "wholesale" : initialMode;
+
+  useEffect(() => {
+    fetchCategories(resolvedMode);
+    fetchSubcategories(resolvedMode, resolvedMode === "wholesale" ? "" : data.categoryId);
+  }, [resolvedMode]);
+
+  useEffect(() => {
+    if (resolvedMode === "wholesale") {
+      setFilteredSubcategories(subcategories);
+      return;
+    }
+    if (!data.categoryId) {
+      setFilteredSubcategories([]);
+      return;
+    }
+    const next = subcategories.filter(
+      (s) => s?.categoryId?._id === data.categoryId || s?.categoryId === data.categoryId
+    );
+    setFilteredSubcategories(next);
+    if (next.length === 0) {
+      setData((prev) => ({ ...prev, subcategoryIds: [], subcategoryId: "" }));
+    }
+  }, [subcategories, data.categoryId, resolvedMode]);
 
   const handleSubmit = async () => {
     try {
+      if (data.isRetail === data.isWholesale) {
+        alert("Select exactly one mode (Retail or Wholesale).");
+        return;
+      }
+
       const token = localStorage.getItem("adminToken");
       const formData = new FormData();
 
       Object.keys(data).forEach((key) => {
-        if (key === "subcategoryIds") {
+        if (key === "subcategoryIds" || key === "categoryIds") {
           formData.append(key, JSON.stringify(data[key] || []));
         } else {
           formData.append(key, data[key]);
         }
       });
+
+      if (data.mrp !== undefined && data.mrp !== null && data.mrp !== "") {
+        formData.append("oldPrice", data.mrp);
+      }
 
       if (image) formData.append("image", image);
 
@@ -98,50 +150,123 @@ export default function AddProduct() {
           onChange={(e) => setData({ ...data, name: e.target.value })}
         />
 
-        <div className="grid grid-cols-4 gap-4">
-          <div>
-            <label>Selling Price*</label>
-            <input
-              className="w-full border p-2 rounded"
-              placeholder="Selling Price"
-              value={data.price}
-              onChange={(e) => setData({ ...data, price: e.target.value })}
-            />
+        {data.isRetail ? (
+          <div className="mt-2">
+            <label className="font-semibold block mb-2">Retail Pricing</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label>Sale Price*</label>
+                  <input
+                    className="w-full border p-2 rounded"
+                    placeholder="230"
+                    value={data.price}
+                    onChange={(e) => setData({ ...data, price: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label>MRP*</label>
+                  <input
+                    className="w-full border p-2 rounded"
+                    placeholder="350"
+                    value={data.mrp}
+                    onChange={(e) => setData({ ...data, mrp: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-6 rounded-lg border bg-gray-50 px-5 py-6">
+                <div className="text-4xl font-semibold text-black">
+                  ₹{data.price || "230"}
+                </div>
+                <div className="text-4xl font-semibold text-gray-400 line-through">
+                  ₹{data.mrp || "350"}
+                </div>
+              </div>
+            </div>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label>Selling Price*</label>
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Selling Price"
+                value={data.price}
+                onChange={(e) => setData({ ...data, price: e.target.value })}
+              />
+            </div>
 
-          <div>
-            <label>Position*</label>
-            <input
-              className="w-full border p-2 rounded"
-              placeholder="Display order (lower shows first)"
-              value={data.position}
-              onChange={(e) => setData({ ...data, position: e.target.value })}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Leave blank to auto-append after existing items.
-            </p>
-          </div>
+            <div>
+              <label>Position*</label>
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Display order (lower shows first)"
+                value={data.position}
+                onChange={(e) => setData({ ...data, position: e.target.value })}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave blank to auto-append after existing items.
+              </p>
+            </div>
 
-          <div>
-            <label>Stock*</label>
-            <input
-              className="w-full border p-2 rounded"
-              placeholder="Stock"
-              value={data.stock}
-              onChange={(e) => setData({ ...data, stock: e.target.value })}
-            />
-          </div>
+            <div>
+              <label>Stock*</label>
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Stock"
+                value={data.stock}
+                onChange={(e) => setData({ ...data, stock: e.target.value })}
+              />
+            </div>
 
-          <div>
-            <label>MOQ*</label>
-            <input
-              className="w-full border p-2 rounded"
-              placeholder="Minimum Order Quantity"
-              value={data.moq}
-              onChange={(e) => setData({ ...data, moq: e.target.value })}
-            />
+            <div>
+              <label>MOQ*</label>
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Minimum Order Quantity"
+                value={data.moq}
+                onChange={(e) => setData({ ...data, moq: e.target.value })}
+              />
+            </div>
           </div>
-        </div>
+        )}
+
+        {data.isRetail && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+              <label>Position*</label>
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Display order (lower shows first)"
+                value={data.position}
+                onChange={(e) => setData({ ...data, position: e.target.value })}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave blank to auto-append after existing items.
+              </p>
+            </div>
+
+            <div>
+              <label>Stock*</label>
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Stock"
+                value={data.stock}
+                onChange={(e) => setData({ ...data, stock: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label>MOQ*</label>
+              <input
+                className="w-full border p-2 rounded"
+                placeholder="Minimum Order Quantity"
+                value={data.moq}
+                onChange={(e) => setData({ ...data, moq: e.target.value })}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="mt-4">
           <label>Weight (1 Kg)</label>
@@ -154,21 +279,93 @@ export default function AddProduct() {
         </div>
 
         <div className="mt-4">
-          <label>Category</label>
+          <label className="font-semibold block mb-2">Visibility</label>
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="productMode"
+                checked={Boolean(data.isRetail)}
+                onChange={() =>
+                  setData({
+                    ...data,
+                    isRetail: true,
+                    isWholesale: false,
+                    isBestSeller: data.isBestSeller,
+                  })
+                }
+                disabled={Boolean(mode)}
+              />
+              Retail
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="productMode"
+                checked={Boolean(data.isWholesale)}
+                onChange={() =>
+                  setData({
+                    ...data,
+                    isRetail: false,
+                    isWholesale: true,
+                    isBestSeller: false,
+                  })
+                }
+                disabled={Boolean(mode)}
+              />
+              Wholesale
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={Boolean(data.isBestSeller)}
+                onChange={(e) =>
+                  setData({ ...data, isBestSeller: e.target.checked })
+                }
+                disabled={!data.isRetail}
+              />
+              Bestseller (Retail only)
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label>Categories (select multiple)</label>
           <select
-            className="w-full border p-2 rounded"
-            value={data.categoryId}
-            onChange={(e) =>
-              setData({ ...data, categoryId: e.target.value })
-            }
+            multiple
+            className="w-full border p-2 rounded h-32"
+            value={data.categoryIds}
+            onChange={(e) => {
+              const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
+              const nextPrimary = selected[0] || "";
+              setData({
+                ...data,
+                categoryIds: selected,
+                categoryId: nextPrimary,
+                subcategoryIds: [],
+                subcategoryId: "",
+              });
+              if (resolvedMode === "wholesale") {
+                fetchSubcategories(resolvedMode, "");
+                return;
+              }
+              if (nextPrimary) {
+                fetchSubcategories(resolvedMode, nextPrimary);
+              } else {
+                setSubcategories([]);
+                setFilteredSubcategories([]);
+              }
+            }}
           >
-            <option value="">Select Category</option>
             {categories.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
               </option>
             ))}
           </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Hold Ctrl/Cmd to pick multiple; first selection is used as primary.
+          </p>
         </div>
 
         <div className="mt-4">
@@ -186,12 +383,15 @@ export default function AddProduct() {
               });
             }}
           >
-            {subcategories.map((s) => (
+            {filteredSubcategories.map((s) => (
               <option key={s._id} value={s._id}>
                 {s.name}
               </option>
             ))}
           </select>
+          {resolvedMode !== "wholesale" && data.categoryId && filteredSubcategories.length === 0 && (
+            <p className="text-xs text-gray-500 mt-1">No subcategories.</p>
+          )}
           <p className="text-xs text-gray-500 mt-1">
             Hold Ctrl/Cmd to pick multiple; first selection is used as primary.
           </p>

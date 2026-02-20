@@ -23,6 +23,7 @@ import RequestProduct from "./pages/RequestProduct";
 import Users from "./pages/Users";
 import HomeLayout from "./pages/HomeLayout";
 import Support from "./pages/Support";
+import Weights from "./pages/Weights";
 import AdminProtectedRoute from "./components/AdminProtectedRoute";
 
 
@@ -166,6 +167,58 @@ function App() {
           }
         />
 
+        {/* ==== WHOLESALE ROUTES (MODE AWARE) ==== */}
+        <Route
+          path="/wholesale/categories"
+          element={
+            <ProtectedLayout>
+              <Categories mode="wholesale" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/wholesale/products"
+          element={
+            <ProtectedLayout>
+              <Products mode="wholesale" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/wholesale/orders"
+          element={
+            <ProtectedLayout>
+              <Orders mode="wholesale" />
+            </ProtectedLayout>
+          }
+        />
+
+        {/* ==== RETAIL ROUTES (MODE AWARE) ==== */}
+        <Route
+          path="/retail/categories"
+          element={
+            <ProtectedLayout>
+              <Categories mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/retail/products"
+          element={
+            <ProtectedLayout>
+              <Products mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/retail/orders"
+          element={
+            <ProtectedLayout>
+              <Orders mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+
         <Route
           path="/admin/order/:id"
           element={
@@ -224,7 +277,7 @@ function App() {
           path="/admin/wholesale/categories"
           element={
             <ProtectedLayout>
-              <Categories />
+              <Categories mode="wholesale" />
             </ProtectedLayout>
           }
         />
@@ -232,7 +285,7 @@ function App() {
           path="/admin/wholesale/subcategories"
           element={
             <ProtectedLayout>
-              <Subcategories />
+              <Subcategories mode="wholesale" />
             </ProtectedLayout>
           }
         />
@@ -240,7 +293,23 @@ function App() {
           path="/admin/wholesale/view-products"
           element={
             <ProtectedLayout>
-              <ViewProducts />
+              <ViewProducts mode="wholesale" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/wholesale/products"
+          element={
+            <ProtectedLayout>
+              <ViewProducts mode="wholesale" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/wholesale/weights"
+          element={
+            <ProtectedLayout>
+              <Weights />
             </ProtectedLayout>
           }
         />
@@ -248,7 +317,7 @@ function App() {
           path="/admin/wholesale/add-product"
           element={
             <ProtectedLayout>
-              <AddProduct />
+              <AddProduct mode="wholesale" />
             </ProtectedLayout>
           }
         />
@@ -264,7 +333,7 @@ function App() {
           path="/admin/wholesale/orders"
           element={
             <ProtectedLayout>
-              <Orders />
+              <Orders mode="wholesale" />
             </ProtectedLayout>
           }
         />
@@ -288,12 +357,126 @@ function App() {
           path="/admin/wholesale/home-layout"
           element={
             <ProtectedLayout>
-              <HomeLayout />
+              <HomeLayout mode="wholesale" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/wholesale/slider"
+          element={
+            <ProtectedLayout>
+              <SliderPage mode="wholesale" />
             </ProtectedLayout>
           }
         />
         <Route
           path="/admin/wholesale/support"
+          element={
+            <ProtectedLayout>
+              <Support />
+            </ProtectedLayout>
+          }
+        />
+
+        {/* ==== RETAIL ROUTES (SIDEBAR LINKS) ==== */}
+        <Route
+          path="/admin/retail/users"
+          element={
+            <ProtectedLayout>
+              <Users />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/categories"
+          element={
+            <ProtectedLayout>
+              <Categories mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/subcategories"
+          element={
+            <ProtectedLayout>
+              <Subcategories mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/view-products"
+          element={
+            <ProtectedLayout>
+              <ViewProducts mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/products"
+          element={
+            <ProtectedLayout>
+              <ViewProducts mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/add-product"
+          element={
+            <ProtectedLayout>
+              <AddProduct mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/positions"
+          element={
+            <ProtectedLayout>
+              <Positions />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/orders"
+          element={
+            <ProtectedLayout>
+              <Orders mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/request-product"
+          element={
+            <ProtectedLayout>
+              <RequestProduct />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/notifications"
+          element={
+            <ProtectedLayout>
+              <Notifications />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/home-layout"
+          element={
+            <ProtectedLayout>
+              <HomeLayout mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/slider"
+          element={
+            <ProtectedLayout>
+              <SliderPage mode="retail" />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/admin/retail/support"
           element={
             <ProtectedLayout>
               <Support />

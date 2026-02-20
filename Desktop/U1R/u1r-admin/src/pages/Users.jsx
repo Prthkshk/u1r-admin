@@ -10,6 +10,12 @@ export default function Users() {
   const [detail, setDetail] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
 
+  const getUserModes = (user) => {
+    const next = Array.isArray(user?.modes) ? user.modes : [];
+    if (next.length) return [...new Set(next)];
+    return user?.mode ? [user.mode] : [];
+  };
+
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("adminToken");
@@ -151,15 +157,7 @@ export default function Users() {
                     <td className="p-3 border">{u.email || "—"}</td>
 
                     <td className="p-3 border">
-                      {u.mode === "B2B" ? (
-                        <span className="text-blue-600 font-semibold">
-                          B2B
-                        </span>
-                      ) : (
-                        <span className="text-green-600 font-semibold">
-                          B2C
-                        </span>
-                      )}
+                      {getUserModes(u).join(", ") || "-"}
                     </td>
 
                     <td className="p-3 border">
@@ -209,7 +207,7 @@ export default function Users() {
               <div><span className="font-semibold">Name:</span> {detail.user?.name || "-"}</div>
               <div><span className="font-semibold">Phone:</span> {detail.user?.phone || "-"}</div>
               <div><span className="font-semibold">Email:</span> {detail.user?.email || "-"}</div>
-              <div><span className="font-semibold">Mode:</span> {detail.user?.mode || "-"}</div>
+              <div><span className="font-semibold">Mode:</span> {getUserModes(detail.user).join(", ") || "-"}</div>
               <div><span className="font-semibold">Created:</span> {detail.user?.createdAt ? new Date(detail.user.createdAt).toLocaleString() : "-"}</div>
             </div>
 

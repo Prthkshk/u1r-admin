@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import axios from "axios";
 import { Trash2, CheckCircle } from "lucide-react";
 import { API_BASE } from "../config/api";
 
 export default function RequestProduct() {
   const [requests, setRequests] = useState([]);
+  const location = useLocation();
+
+  const modeFilter = location.pathname.includes("/retail/")
+    ? "retail"
+    : location.pathname.includes("/wholesale/")
+    ? "wholesale"
+    : "";
 
   const fetchRequests = async () => {
     try {
@@ -14,6 +22,7 @@ export default function RequestProduct() {
         `${API_BASE}/api/admin/request-product`,
         {
           headers: { Authorization: `Bearer ${token}` },
+          params: modeFilter ? { mode: modeFilter } : undefined,
         }
       );
 
