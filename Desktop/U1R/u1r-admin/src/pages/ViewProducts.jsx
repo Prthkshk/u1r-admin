@@ -14,6 +14,7 @@ export default function ViewProducts({ mode }) {
   const [subcategories, setSubcategories] = useState([]);
   const [search, setSearch] = useState("");
   const [activeWeight, setActiveWeight] = useState("all");
+  const [downloadType, setDownloadType] = useState("all");
   const formatPrice = (value) => `₹${(Number(value) || 0).toLocaleString("en-IN")}`;
   const resolvedMode = mode || activeMode;
   const isRetail = resolvedMode === "retail";
@@ -279,14 +280,19 @@ export default function ViewProducts({ mode }) {
       return "Unassigned";
     };
 
-    const prepared = products.map((p) => ({
-      category: resolveCategoryName(p),
-      subcategory: resolveSubcategoryName(p),
-      name: p?.name || "-",
-      unit: p?.weight || "-",
-      qty: p?.moq || "-",
-      rate: Number(p?.price || 0),
-    }));
+    const prepared = products.map((p) => {
+      const stock = Number(p?.stock || 0);
+      const baseName = p?.name || "-";
+      return {
+        category: resolveCategoryName(p),
+        subcategory: resolveSubcategoryName(p),
+        name: stock <= 0 ? `${baseName} (out of stock)` : baseName,
+        unit: p?.weight || "-",
+        qty: p?.moq || "-",
+        rate: stock <= 0 ? null : Number(p?.price || 0),
+        stock,
+      };
+    });
 
     prepared.sort((a, b) => {
       const byCategory = a.category.localeCompare(b.category);
@@ -296,14 +302,63 @@ export default function ViewProducts({ mode }) {
       return a.name.localeCompare(b.name);
     });
 
-    const grouped = prepared.reduce((acc, item) => {
+    const selectedProducts =
+      downloadType === "out_of_stock"
+        ? prepared.filter((item) => item.stock <= 0)
+        : prepared;
+
+    if (!selectedProducts.length) {
+      alert(
+        downloadType === "out_of_stock"
+          ? "No out of stock products to download."
+          : "No products to download."
+      );
+      return;
+    }
+
+    const flatRows = selectedProducts
+      .map(
+        (item, idx) => `
+          <tr>
+            <td style="padding:2px 6px;text-align:right;width:28px;">${idx + 1}</td>
+            <td style="padding:2px 6px;">${item.category}</td>
+            <td style="padding:2px 6px;">${item.subcategory}</td>
+            <td style="padding:2px 6px;">${item.name}</td>
+            <td style="padding:2px 6px;text-align:center;width:70px;">${item.unit}</td>
+            <td style="padding:2px 6px;text-align:center;width:50px;">${item.qty}</td>
+            <td style="padding:2px 6px;text-align:right;width:70px;">${Number.isFinite(item.rate) ? item.rate.toLocaleString("en-IN") : "-"}</td>
+          </tr>
+        `
+      )
+      .join("");
+
+    const flatTableHtml = `
+      <table class="category-table">
+        <thead>
+          <tr class="category-bar">
+            <th style="width:28px;">#</th>
+            <th>Category</th>
+            <th>Subcategory</th>
+            <th>Product</th>
+            <th>Unit</th>
+            <th>Qty</th>
+            <th>Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${flatRows}
+        </tbody>
+      </table>
+    `;
+
+    const grouped = selectedProducts.reduce((acc, item) => {
       const key = item.category || "Uncategorized";
       if (!acc[key]) acc[key] = [];
       acc[key].push(item);
       return acc;
     }, {});
 
-    const sectionHtml = Object.keys(grouped)
+    const categoryWiseHtml = Object.keys(grouped)
       .sort((a, b) => a.localeCompare(b))
       .map((categoryName) => {
         const rows = grouped[categoryName]
@@ -314,7 +369,7 @@ export default function ViewProducts({ mode }) {
                 <td style="padding:2px 6px;">${item.name}</td>
                 <td style="padding:2px 6px;text-align:center;width:70px;">${item.unit}</td>
                 <td style="padding:2px 6px;text-align:center;width:50px;">${item.qty}</td>
-                <td style="padding:2px 6px;text-align:right;width:70px;">${item.rate ? item.rate.toLocaleString("en-IN") : "-"}</td>
+                <td style="padding:2px 6px;text-align:right;width:70px;">${Number.isFinite(item.rate) ? item.rate.toLocaleString("en-IN") : "-"}</td>
               </tr>
             `
           )
@@ -338,10 +393,19 @@ export default function ViewProducts({ mode }) {
       })
       .join("");
 
+    const titleByType = {
+      all: "All Products",
+      category_wise: "Category Wise Products",
+      out_of_stock: "Out of Stock Products",
+    };
+
+    const contentHtml =
+      downloadType === "category_wise" ? categoryWiseHtml : flatTableHtml;
+
     const html = `
       <html>
         <head>
-          <title>Products Export</title>
+          <title>${titleByType[downloadType]} Export</title>
           <style>
             * { box-sizing: border-box; }
             body { font-family: Arial, sans-serif; color: #111827; padding: 24px; }
@@ -360,9 +424,9 @@ export default function ViewProducts({ mode }) {
           </style>
         </head>
         <body>
-          <h1>Products (Category / Subcategory Wise)</h1>
-          <div class="muted">Total Products: ${prepared.length}</div>
-          ${sectionHtml}
+          <h1>${titleByType[downloadType]}</h1>
+          <div class="muted">Total Products: ${selectedProducts.length}</div>
+          ${contentHtml}
         </body>
       </html>
     `;
@@ -425,12 +489,21 @@ export default function ViewProducts({ mode }) {
             >
               Add Product
             </button>
+            <select
+              value={downloadType}
+              onChange={(e) => setDownloadType(e.target.value)}
+              className="px-3 py-2 rounded-lg border bg-white text-gray-700"
+            >
+              <option value="all">All Products</option>
+              <option value="category_wise">Category Wise</option>
+              <option value="out_of_stock">Out of Stock</option>
+            </select>
             <button
               type="button"
               onClick={downloadProductsPdf}
               className="px-4 py-2 rounded-lg border bg-gray-100 text-gray-700 hover:bg-gray-200"
             >
-              Download Category/Subcategory PDF
+              Download PDF
             </button>
           </div>
           <input
