@@ -22,7 +22,8 @@ export default function AddProduct({ mode }) {
     subcategoryIds: [],
     isRetail: initialMode === "retail",
     isWholesale: initialMode === "wholesale",
-    isBestSeller: false
+    isBestSeller: false,
+    moqStepEnabled: false,
   });
 
   const [image, setImage] = useState(null);
@@ -280,7 +281,7 @@ export default function AddProduct({ mode }) {
 
         <div className="mt-4">
           <label className="font-semibold block mb-2">Visibility</label>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 flex-wrap">
             <label className="flex items-center gap-2">
               <input
                 type="radio"
@@ -292,6 +293,7 @@ export default function AddProduct({ mode }) {
                     isRetail: true,
                     isWholesale: false,
                     isBestSeller: data.isBestSeller,
+                    moqStepEnabled: false,
                   })
                 }
                 disabled={Boolean(mode)}
@@ -309,6 +311,7 @@ export default function AddProduct({ mode }) {
                     isRetail: false,
                     isWholesale: true,
                     isBestSeller: false,
+                    moqStepEnabled: data.moqStepEnabled,
                   })
                 }
                 disabled={Boolean(mode)}
@@ -325,6 +328,17 @@ export default function AddProduct({ mode }) {
                 disabled={!data.isRetail}
               />
               Bestseller (Retail only)
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={Boolean(data.moqStepEnabled)}
+                onChange={(e) =>
+                  setData({ ...data, moqStepEnabled: e.target.checked })
+                }
+                disabled={!data.isWholesale}
+              />
+              MOQ Step (10,20,30)
             </label>
           </div>
         </div>

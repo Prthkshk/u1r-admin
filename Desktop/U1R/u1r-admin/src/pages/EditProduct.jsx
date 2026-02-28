@@ -22,7 +22,8 @@ export default function EditProduct() {
     subcategoryIds: [],
     isRetail: false,
     isWholesale: true,
-    isBestSeller: false
+    isBestSeller: false,
+    moqStepEnabled: false,
   });
 
   const [image, setImage] = useState(null);
@@ -67,6 +68,7 @@ export default function EditProduct() {
         isRetail: res.data.isRetail ?? false,
         isWholesale: res.data.isWholesale ?? true,
         isBestSeller: res.data.isBestSeller ?? false,
+        moqStepEnabled: res.data.moqStepEnabled ?? false,
       });
     } catch (error) {
       console.log("Error loading product:", error);
@@ -308,7 +310,7 @@ export default function EditProduct() {
 
         <div className="mt-4">
           <label className="font-semibold block mb-2">Visibility</label>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 flex-wrap">
             <label className="flex items-center gap-2">
               <input
                 type="radio"
@@ -320,6 +322,7 @@ export default function EditProduct() {
                     isRetail: true,
                     isWholesale: false,
                     isBestSeller: data.isBestSeller,
+                    moqStepEnabled: false,
                   })
                 }
               />
@@ -336,6 +339,7 @@ export default function EditProduct() {
                     isRetail: false,
                     isWholesale: true,
                     isBestSeller: false,
+                    moqStepEnabled: data.moqStepEnabled,
                   })
                 }
               />
@@ -351,6 +355,17 @@ export default function EditProduct() {
                 disabled={!data.isRetail}
               />
               Bestseller (Retail only)
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={Boolean(data.moqStepEnabled)}
+                onChange={(e) =>
+                  setData({ ...data, moqStepEnabled: e.target.checked })
+                }
+                disabled={!data.isWholesale}
+              />
+              MOQ Step (10,20,30)
             </label>
           </div>
         </div>
