@@ -23,6 +23,8 @@ export default function EditProduct() {
     isRetail: false,
     isWholesale: true,
     isBestSeller: false,
+    isWebsiteFeatured: false,
+    isWebsiteTrending: false,
     moqStepEnabled: false,
   });
 
@@ -68,6 +70,8 @@ export default function EditProduct() {
         isRetail: res.data.isRetail ?? false,
         isWholesale: res.data.isWholesale ?? true,
         isBestSeller: res.data.isBestSeller ?? false,
+        isWebsiteFeatured: res.data.isWebsiteFeatured ?? false,
+        isWebsiteTrending: res.data.isWebsiteTrending ?? false,
         moqStepEnabled: res.data.moqStepEnabled ?? false,
       });
     } catch (error) {
@@ -322,6 +326,8 @@ export default function EditProduct() {
                     isRetail: true,
                     isWholesale: false,
                     isBestSeller: data.isBestSeller,
+                    isWebsiteFeatured: data.isWebsiteFeatured,
+                    isWebsiteTrending: data.isWebsiteTrending,
                     moqStepEnabled: false,
                   })
                 }
@@ -339,6 +345,8 @@ export default function EditProduct() {
                     isRetail: false,
                     isWholesale: true,
                     isBestSeller: false,
+                    isWebsiteFeatured: false,
+                    isWebsiteTrending: false,
                     moqStepEnabled: data.moqStepEnabled,
                   })
                 }
@@ -355,6 +363,28 @@ export default function EditProduct() {
                 disabled={!data.isRetail}
               />
               Bestseller (Retail only)
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={Boolean(data.isWebsiteFeatured)}
+                onChange={(e) =>
+                  setData({ ...data, isWebsiteFeatured: e.target.checked })
+                }
+                disabled={!data.isRetail}
+              />
+              Featured Product (Website)
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={Boolean(data.isWebsiteTrending)}
+                onChange={(e) =>
+                  setData({ ...data, isWebsiteTrending: e.target.checked })
+                }
+                disabled={!data.isRetail}
+              />
+              Trending Product (Website)
             </label>
             <label className="flex items-center gap-2">
               <input

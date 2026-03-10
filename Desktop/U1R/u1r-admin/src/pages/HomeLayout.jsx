@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { API_BASE, withBase } from "../config/api";
 
 const defaultSections = [
@@ -14,6 +13,8 @@ const defaultSections = [
 export default function HomeLayout({ mode }) {
   const resolvedMode = mode || "wholesale";
   const isRetail = resolvedMode === "retail";
+  const isWebsitePage = !mode;
+  const normalizeId = (value) => String(value || "").trim();
   const initialSections = useMemo(() => {
     if (!isRetail) return defaultSections;
     return [
@@ -35,6 +36,20 @@ export default function HomeLayout({ mode }) {
   const [searchInput, setSearchInput] = useState("");
   const [bannerFile, setBannerFile] = useState(null);
   const [bannerPreview, setBannerPreview] = useState("");
+  const [websiteBanners, setWebsiteBanners] = useState([]);
+  const [websiteBannerFiles, setWebsiteBannerFiles] = useState([]);
+  const [websitePromoBanners, setWebsitePromoBanners] = useState([]);
+  const [websitePromoBannerFiles, setWebsitePromoBannerFiles] = useState([]);
+  const [websiteStretchBannerFile, setWebsiteStretchBannerFile] = useState(null);
+  const [websiteStretchBannerPreview, setWebsiteStretchBannerPreview] = useState("");
+  const [websiteCategoryBannerFile, setWebsiteCategoryBannerFile] = useState(null);
+  const [websiteCategoryBannerSourceType, setWebsiteCategoryBannerSourceType] = useState("category");
+  const [websiteCategoryBannerCategoryId, setWebsiteCategoryBannerCategoryId] = useState("");
+  const [websiteCategoryBannerSubcategoryId, setWebsiteCategoryBannerSubcategoryId] = useState("");
+  const [websiteCategoryBanners, setWebsiteCategoryBanners] = useState([]);
+  const [websiteCategoryOptions, setWebsiteCategoryOptions] = useState([]);
+  const [websiteSubcategoryOptions, setWebsiteSubcategoryOptions] = useState([]);
+  const [websiteSelectedSubcategoryIds, setWebsiteSelectedSubcategoryIds] = useState([]);
   const [retailBannerSourceType, setRetailBannerSourceType] = useState("none");
   const [retailBannerCategoryId, setRetailBannerCategoryId] = useState("");
   const [retailBannerSubcategoryId, setRetailBannerSubcategoryId] = useState("");
@@ -107,6 +122,41 @@ export default function HomeLayout({ mode }) {
     );
     setRetailSectionTitle(retailProductSection?.title || "");
     setRetailSectionLimit(Number(retailProductSection?.limit) || 6);
+    const websiteBannerData = Array.isArray(res.data?.websiteBanners)
+      ? [...res.data.websiteBanners]
+          .filter((item) => item?.image)
+          .sort((a, b) => Number(a?.priority || 0) - Number(b?.priority || 0))
+      : [];
+    setWebsiteBanners(websiteBannerData);
+    const websitePromoBannerData = Array.isArray(res.data?.websitePromoBanners)
+      ? [...res.data.websitePromoBanners]
+          .filter((item) => item?.image)
+          .sort((a, b) => Number(a?.priority || 0) - Number(b?.priority || 0))
+      : [];
+    setWebsitePromoBanners(websitePromoBannerData);
+    setWebsitePromoBannerFiles([]);
+    const stretchBannerImage = res.data?.websiteStretchBanner?.image || "";
+    setWebsiteStretchBannerPreview(stretchBannerImage ? withBase(stretchBannerImage) : "");
+    setWebsiteStretchBannerFile(null);
+    const websiteCategoryBannerData = Array.isArray(res.data?.websiteCategoryBanners)
+      ? [...res.data.websiteCategoryBanners]
+          .filter((item) => item?.image)
+          .sort((a, b) => Number(a?.priority || 0) - Number(b?.priority || 0))
+      : [];
+    setWebsiteCategoryBanners(websiteCategoryBannerData);
+    setWebsiteCategoryBannerFile(null);
+    const websiteSubcategoryData = Array.isArray(res.data?.websiteSubcategories)
+      ? [...res.data.websiteSubcategories]
+          .filter((item) => item?.subcategoryId)
+          .sort((a, b) => Number(a?.priority || 0) - Number(b?.priority || 0))
+      : [];
+    setWebsiteSelectedSubcategoryIds(
+      websiteSubcategoryData
+        .map((item) => item?.subcategoryId?._id || item?.subcategoryId)
+        .map((id) => normalizeId(id))
+        .filter(Boolean)
+    );
+    setWebsiteBannerFiles([]);
     setLoading(false);
   };
 
@@ -128,19 +178,31 @@ export default function HomeLayout({ mode }) {
     setSubcategories(res.data || []);
   };
 
+  const fetchWebsiteSubcategoryOptions = async () => {
+    const token = localStorage.getItem("adminToken");
+    const res = await axios.get(`${API_BASE}/api/admin/subcategory?mode=retail`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setWebsiteSubcategoryOptions(res.data || []);
+  };
+
+  const fetchWebsiteCategoryOptions = async () => {
+    const token = localStorage.getItem("adminToken");
+    const res = await axios.get(`${API_BASE}/api/admin/category?mode=retail`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setWebsiteCategoryOptions(res.data || []);
+  };
+
   useEffect(() => {
     fetchLayout();
     fetchCategories();
     fetchSubcategories();
-  }, [resolvedMode]);
-
-  const sectionNames = {
-    slider: "Slider Section",
-    featuredCategories: "Featured Categories",
-    featuredSubcategories: "Subcategory Slider",
-    featuredProducts: "Featured Products",
-    customSections: "Custom Sections",
-  };
+    if (isWebsitePage) {
+      fetchWebsiteCategoryOptions();
+      fetchWebsiteSubcategoryOptions();
+    }
+  }, [resolvedMode, isWebsitePage]);
 
   const setFeaturedSubcategories = (ids) => {
     setLayout((prev) => ({
@@ -173,16 +235,6 @@ export default function HomeLayout({ mode }) {
         : [...prev, id];
       return next;
     });
-  };
-
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
-
-    const items = Array.from(sections);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-
-    setSections(items);
   };
 
   const saveLayout = async () => {
@@ -274,6 +326,180 @@ export default function HomeLayout({ mode }) {
     alert("Retail banner updated!");
   };
 
+  const saveWebsiteBanners = async () => {
+    const token = localStorage.getItem("adminToken");
+    const form = new FormData();
+    const keepImages = websiteBanners.map((item) => item?.image).filter(Boolean);
+
+    form.append("keepImages", JSON.stringify(keepImages));
+    websiteBannerFiles.forEach((file) => {
+      form.append("images", file);
+    });
+
+    const res = await axios.put(
+      `${API_BASE}/api/admin/home-layout/website-banners`,
+      form,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const nextBanners = Array.isArray(res?.data?.websiteBanners)
+      ? [...res.data.websiteBanners]
+          .filter((item) => item?.image)
+          .sort((a, b) => Number(a?.priority || 0) - Number(b?.priority || 0))
+      : [];
+    setWebsiteBanners(nextBanners);
+    setWebsiteBannerFiles([]);
+    alert("Website banners updated!");
+  };
+
+  const toggleWebsiteSubcategory = (id) => {
+    const normalizedId = normalizeId(id);
+    if (!normalizedId) return;
+    setWebsiteSelectedSubcategoryIds((prev) =>
+      prev.includes(normalizedId)
+        ? prev.filter((item) => item !== normalizedId)
+        : [...prev, normalizedId]
+    );
+  };
+
+  const saveWebsiteSubcategories = async () => {
+    const token = localStorage.getItem("adminToken");
+
+    await axios.put(
+      `${API_BASE}/api/admin/home-layout/website-subcategories`,
+      {
+        subcategoryIds: websiteSelectedSubcategoryIds
+          .map((id) => normalizeId(id))
+          .filter(Boolean),
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    alert("Website subcategories updated!");
+  };
+
+  const saveWebsitePromoBanners = async () => {
+    const token = localStorage.getItem("adminToken");
+    const form = new FormData();
+    const keepImages = websitePromoBanners.map((item) => item?.image).filter(Boolean);
+
+    form.append("keepImages", JSON.stringify(keepImages));
+    websitePromoBannerFiles.forEach((file) => {
+      form.append("images", file);
+    });
+
+    const res = await axios.put(
+      `${API_BASE}/api/admin/home-layout/website-promo-banners`,
+      form,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const nextBanners = Array.isArray(res?.data?.websitePromoBanners)
+      ? [...res.data.websitePromoBanners]
+          .filter((item) => item?.image)
+          .sort((a, b) => Number(a?.priority || 0) - Number(b?.priority || 0))
+      : [];
+    setWebsitePromoBanners(nextBanners);
+    setWebsitePromoBannerFiles([]);
+    alert("Website promo banners updated!");
+  };
+
+  const saveWebsiteStretchBanner = async () => {
+    if (!websiteStretchBannerFile) {
+      alert("Please choose a stretch banner image");
+      return;
+    }
+
+    const token = localStorage.getItem("adminToken");
+    const form = new FormData();
+    form.append("image", websiteStretchBannerFile);
+
+    const res = await axios.put(
+      `${API_BASE}/api/admin/home-layout/website-stretch-banner`,
+      form,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const nextImage = res?.data?.websiteStretchBanner?.image || "";
+    setWebsiteStretchBannerPreview(nextImage ? withBase(nextImage) : "");
+    setWebsiteStretchBannerFile(null);
+    alert("Website stretch banner updated!");
+  };
+
+  const saveWebsiteCategoryBanner = async () => {
+    if (!websiteCategoryBannerFile) {
+      alert("Please choose a banner image");
+      return;
+    }
+    if (websiteCategoryBannerSourceType === "category" && !websiteCategoryBannerCategoryId) {
+      alert("Please select a category");
+      return;
+    }
+    if (websiteCategoryBannerSourceType === "subcategory" && !websiteCategoryBannerSubcategoryId) {
+      alert("Please select a subcategory");
+      return;
+    }
+
+    const token = localStorage.getItem("adminToken");
+    const form = new FormData();
+    form.append("image", websiteCategoryBannerFile);
+    form.append("sourceType", websiteCategoryBannerSourceType);
+    if (websiteCategoryBannerSourceType === "category") {
+      form.append("categoryId", websiteCategoryBannerCategoryId);
+    } else {
+      form.append("subcategoryId", websiteCategoryBannerSubcategoryId);
+    }
+
+    const res = await axios.post(
+      `${API_BASE}/api/admin/home-layout/website-category-banners`,
+      form,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const next = Array.isArray(res?.data?.websiteCategoryBanners)
+      ? [...res.data.websiteCategoryBanners]
+          .filter((item) => item?.image)
+          .sort((a, b) => Number(a?.priority || 0) - Number(b?.priority || 0))
+      : [];
+    setWebsiteCategoryBanners(next);
+    setWebsiteCategoryBannerFile(null);
+    alert("Website category banner added!");
+  };
+
+  const deleteWebsiteCategoryBanner = async (bannerId) => {
+    const token = localStorage.getItem("adminToken");
+    const res = await axios.delete(
+      `${API_BASE}/api/admin/home-layout/website-category-banners/${bannerId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const next = Array.isArray(res?.data?.websiteCategoryBanners)
+      ? [...res.data.websiteCategoryBanners]
+          .filter((item) => item?.image)
+          .sort((a, b) => Number(a?.priority || 0) - Number(b?.priority || 0))
+      : [];
+    setWebsiteCategoryBanners(next);
+  };
+
   return (
     <div className="w-full">
 
@@ -281,6 +507,341 @@ export default function HomeLayout({ mode }) {
       <div className="w-full bg-red-500 text-white p-6 rounded-b-xl mb-6">
         <h1 className="text-4xl heading-font font-bold">HOME LAYOUT</h1>
       </div>
+
+      {isWebsitePage && (
+      <div className="bg-white p-6 rounded-xl shadow-md mb-6">
+        <h2 className="text-xl font-semibold mb-2">Website Hero Banner</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Upload one or more banners. These images will show on the website home page.
+        </p>
+
+        <div className="grid grid-cols-2 gap-6 items-start">
+          <div>
+            <label className="font-semibold block mb-2">Banner Images</label>
+            <input
+              type="file"
+              multiple
+              className="border p-2 rounded w-full"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                setWebsiteBannerFiles((prev) => [...prev, ...files]);
+              }}
+            />
+            {!!websiteBannerFiles.length && (
+              <div className="mt-3 text-sm text-gray-700 space-y-1">
+                {websiteBannerFiles.map((file, idx) => (
+                  <div key={`${file.name}-${idx}`} className="flex items-center justify-between gap-2">
+                    <span className="truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      className="text-xs text-red-600 hover:underline"
+                      onClick={() =>
+                        setWebsiteBannerFiles((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={saveWebsiteBanners}
+              className="mt-4 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600"
+            >
+              Save Website Banners
+            </button>
+          </div>
+
+          <div>
+            <div className="font-semibold mb-2">Current Banners</div>
+            {!!websiteBanners.length ? (
+              <div className="grid grid-cols-2 gap-3 max-h-[360px] overflow-auto pr-1">
+                {websiteBanners.map((item, idx) => (
+                  <div key={`${item.image}-${idx}`} className="border rounded-lg p-2">
+                    <img
+                      src={withBase(item.image)}
+                      className="w-full h-28 rounded object-cover border"
+                    />
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-red-600 hover:underline"
+                      onClick={() =>
+                        setWebsiteBanners((prev) =>
+                          prev.filter((banner) => banner.image !== item.image)
+                        )
+                      }
+                    >
+                      Remove Banner
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">No website banners added.</div>
+            )}
+          </div>
+        </div>
+      </div>
+      )}
+
+      {isWebsitePage && (
+      <div className="bg-white p-6 rounded-xl shadow-md mb-6">
+        <h2 className="text-xl font-semibold mb-2">Website Promo Banners</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Upload one or more promo banners for the website home page.
+        </p>
+
+        <div className="grid grid-cols-2 gap-6 items-start">
+          <div>
+            <label className="font-semibold block mb-2">Promo Banner Images</label>
+            <input
+              type="file"
+              multiple
+              className="border p-2 rounded w-full"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                setWebsitePromoBannerFiles((prev) => [...prev, ...files]);
+              }}
+            />
+            {!!websitePromoBannerFiles.length && (
+              <div className="mt-3 text-sm text-gray-700 space-y-1">
+                {websitePromoBannerFiles.map((file, idx) => (
+                  <div key={`${file.name}-${idx}`} className="flex items-center justify-between gap-2">
+                    <span className="truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      className="text-xs text-red-600 hover:underline"
+                      onClick={() =>
+                        setWebsitePromoBannerFiles((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={saveWebsitePromoBanners}
+              className="mt-4 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600"
+            >
+              Save Promo Banners
+            </button>
+          </div>
+
+          <div>
+            <div className="font-semibold mb-2">Current Promo Banners</div>
+            {!!websitePromoBanners.length ? (
+              <div className="grid grid-cols-2 gap-3 max-h-[360px] overflow-auto pr-1">
+                {websitePromoBanners.map((item, idx) => (
+                  <div key={`${item.image}-${idx}`} className="border rounded-lg p-2">
+                    <img
+                      src={withBase(item.image)}
+                      className="w-full h-28 rounded object-cover border"
+                    />
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-red-600 hover:underline"
+                      onClick={() =>
+                        setWebsitePromoBanners((prev) =>
+                          prev.filter((banner) => banner.image !== item.image)
+                        )
+                      }
+                    >
+                      Remove Banner
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">No promo banners added.</div>
+            )}
+          </div>
+        </div>
+      </div>
+      )}
+
+      {isWebsitePage && (
+      <div className="bg-white p-6 rounded-xl shadow-md mb-6">
+        <h2 className="text-xl font-semibold mb-2">Website Subcategory Section</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Select subcategories to show on the website home page.
+        </p>
+
+        <div className="grid grid-cols-3 gap-3 max-h-[360px] overflow-auto">
+          {websiteSubcategoryOptions.map((sub) => (
+            <label
+              key={sub._id}
+              className="flex items-center gap-3 border rounded-lg p-3 cursor-pointer hover:bg-gray-50"
+            >
+              <input
+                type="checkbox"
+                checked={websiteSelectedSubcategoryIds.includes(normalizeId(sub._id))}
+                onChange={() => toggleWebsiteSubcategory(sub._id)}
+              />
+              <div>
+                <div className="font-semibold text-sm">{sub.name}</div>
+                <div className="text-xs text-gray-500">
+                  {sub.categoryId?.name || "Unassigned"}
+                </div>
+              </div>
+            </label>
+          ))}
+          {!websiteSubcategoryOptions.length && (
+            <div className="text-sm text-gray-500">No subcategories found.</div>
+          )}
+        </div>
+
+        <button
+          onClick={saveWebsiteSubcategories}
+          className="mt-4 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600"
+        >
+          Save Website Subcategories
+        </button>
+      </div>
+      )}
+
+      {isWebsitePage && (
+      <div className="bg-white p-6 rounded-xl shadow-md mb-6">
+        <h2 className="text-xl font-semibold mb-2">Website Stretch Banner</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Upload a single full-width banner to show after website subcategories.
+        </p>
+
+        <div className="grid grid-cols-2 gap-6 items-start">
+          <div>
+            <label className="font-semibold block mb-2">Stretch Banner Image</label>
+            <input
+              type="file"
+              className="border p-2 rounded w-full"
+              onChange={(e) => setWebsiteStretchBannerFile(e.target.files?.[0] || null)}
+            />
+            <button
+              onClick={saveWebsiteStretchBanner}
+              className="mt-4 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600"
+            >
+              Save Stretch Banner
+            </button>
+          </div>
+
+          <div>
+            <div className="font-semibold mb-2">Preview</div>
+            {websiteStretchBannerPreview ? (
+              <img
+                src={websiteStretchBannerPreview}
+                className="w-full max-w-2xl rounded-lg border object-cover"
+              />
+            ) : (
+              <div className="text-sm text-gray-500">No stretch banner uploaded.</div>
+            )}
+          </div>
+        </div>
+      </div>
+      )}
+
+      {isWebsitePage && (
+      <div className="bg-white p-6 rounded-xl shadow-md mb-6">
+        <h2 className="text-xl font-semibold mb-2">Website Category/Subcategory Banners</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Add banner and target a category or subcategory. It will show on that page on website.
+        </p>
+
+        <div className="grid grid-cols-3 gap-4 items-end">
+          <div>
+            <label className="font-semibold block mb-2">Target Type</label>
+            <select
+              className="w-full border rounded px-3 py-2"
+              value={websiteCategoryBannerSourceType}
+              onChange={(e) => setWebsiteCategoryBannerSourceType(e.target.value)}
+            >
+              <option value="category">Category</option>
+              <option value="subcategory">Subcategory</option>
+            </select>
+          </div>
+          <div>
+            <label className="font-semibold block mb-2">
+              {websiteCategoryBannerSourceType === "subcategory" ? "Subcategory" : "Category"}
+            </label>
+            {websiteCategoryBannerSourceType === "subcategory" ? (
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={websiteCategoryBannerSubcategoryId}
+                onChange={(e) => setWebsiteCategoryBannerSubcategoryId(e.target.value)}
+              >
+                <option value="">Select subcategory</option>
+                {websiteSubcategoryOptions.map((sub) => (
+                  <option key={sub._id} value={sub._id}>
+                    {sub.name} ({sub.categoryId?.name || "Unassigned"})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={websiteCategoryBannerCategoryId}
+                onChange={(e) => setWebsiteCategoryBannerCategoryId(e.target.value)}
+              >
+                <option value="">Select category</option>
+                {websiteCategoryOptions.map((cat) => (
+                  <option key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div>
+            <label className="font-semibold block mb-2">Banner Image</label>
+            <input
+              type="file"
+              className="border p-2 rounded w-full"
+              onChange={(e) => setWebsiteCategoryBannerFile(e.target.files?.[0] || null)}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={saveWebsiteCategoryBanner}
+          className="mt-4 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600"
+        >
+          Add Category Banner
+        </button>
+
+        <div className="mt-6">
+          <div className="font-semibold mb-2">Mapped Banners</div>
+          {!!websiteCategoryBanners.length ? (
+            <div className="grid grid-cols-2 gap-3 max-h-[420px] overflow-auto pr-1">
+              {websiteCategoryBanners.map((item) => (
+                <div key={item._id || item.image} className="border rounded-lg p-2">
+                  <img
+                    src={withBase(item.image)}
+                    className="w-full h-28 rounded object-cover border"
+                  />
+                  <div className="mt-2 text-xs text-gray-700">
+                    Target: {item.sourceType === "subcategory" ? "Subcategory" : "Category"}{" "}
+                    {item.sourceType === "subcategory"
+                      ? item.subcategoryId?.name || "N/A"
+                      : item.categoryId?.name || "N/A"}
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-2 text-xs text-red-600 hover:underline"
+                    onClick={() => deleteWebsiteCategoryBanner(item._id)}
+                  >
+                    Remove Banner
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">No category banners mapped yet.</div>
+          )}
+        </div>
+      </div>
+      )}
 
       {isRetail && (
         <div className="bg-white p-6 rounded-xl shadow-md mb-6">
@@ -538,53 +1099,7 @@ export default function HomeLayout({ mode }) {
             </div>
           </div>
         </>
-      ) : (
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Reorder Home Sections</h2>
-
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="sections">
-              {(provided) => (
-                <ul
-                  className="space-y-3"
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                >
-                  {sections.map((section, index) => (
-                    <Draggable
-                      key={section}
-                      draggableId={section}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <li
-                          className="p-4 bg-gray-100 rounded-lg border shadow cursor-pointer"
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          ref={provided.innerRef}
-                        >
-                          {sectionNames[section]}
-                        </li>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </ul>
-              )}
-            </Droppable>
-          </DragDropContext>
-
-          <button
-            onClick={saveLayout}
-            className={`mt-6 px-6 py-2 rounded-lg text-white ${
-              loading ? "bg-red-300 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"
-            }`}
-            disabled={loading}
-          >
-            Save Layout
-          </button>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

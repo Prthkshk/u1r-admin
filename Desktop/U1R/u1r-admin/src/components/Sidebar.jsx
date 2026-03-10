@@ -76,6 +76,13 @@ const Sidebar = () => {
           Support Tickets
         </NavLink>
 
+        {/* ================= WEBSITE ================= */}
+        <div className={sectionClass}>Website</div>
+
+        <NavLink to="/admin/home-layout" className={linkClass}>
+          Home Page
+        </NavLink>
+
         {/* ================= RETAIL ================= */}
         <div className={sectionClass}>Retail</div>
 
